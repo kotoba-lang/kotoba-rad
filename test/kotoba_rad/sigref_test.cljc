@@ -1,8 +1,10 @@
 (ns kotoba-rad.sigref-test
   (:require [clojure.test :refer [deftest is]]
+            [ed25519.core :as ed]
             [kotoba-rad.sigref :as sigref]))
 
 (def signer-seed (byte-array (range 32)))
+(def other-seed (byte-array (map #(mod (+ % 5) 256) (range 32))))
 
 (deftest sign-and-verify-roundtrip
   (let [sr (sigref/sign signer-seed "rid-1" "refs/heads/main" "commit-1" 1000)]
@@ -15,3 +17,26 @@
 
 (deftest missing-sig-is-invalid
   (is (false? (sigref/valid? {"rid" "rid-1" "ref" "refs/heads/main" "commit" "c" "ts" 1}))))
+
+(deftest tampered-ts-fails-verification
+  (let [sr (sigref/sign signer-seed "rid-1" "refs/heads/main" "commit-1" 1000)
+        tampered (assoc sr "ts" 9999)]
+    (is (false? (sigref/valid? tampered)))))
+
+(deftest tampered-ref-fails-verification
+  (let [sr (sigref/sign signer-seed "rid-1" "refs/heads/main" "commit-1" 1000)
+        tampered (assoc sr "ref" "refs/heads/evil")]
+    (is (false? (sigref/valid? tampered)))))
+
+(deftest tampered-rid-fails-verification
+  (let [sr (sigref/sign signer-seed "rid-1" "refs/heads/main" "commit-1" 1000)
+        tampered (assoc sr "rid" "rid-evil")]
+    (is (false? (sigref/valid? tampered)))))
+
+(deftest claiming-a-different-well-formed-did-as-signer-fails-verification
+  (let [sr (sigref/sign signer-seed "rid-1" "refs/heads/main" "commit-1" 1000)
+        other-did (ed/did-key-from-seed other-seed)]
+    ;; swapping in a different (but well-formed) did:key as the claimed
+    ;; signer, keeping the original signature bytes, must fail --
+    ;; verify-did checks the signature against THIS did's pubkey.
+    (is (false? (sigref/valid? (assoc sr "signer" other-did))))))

@@ -18,6 +18,13 @@
   (let [{:keys [put! get-fn]} (new-store)
         rid1 (identity/genesis! put! "did:key:zOwner" 1000)
         rid2 (identity/genesis! put! "did:key:zOwner" 1000)
-        rid3 (identity/genesis! put! "did:key:zOther" 1000)]
+        rid3 (identity/genesis! put! "did:key:zOther" 1000)
+        rid4 (identity/genesis! put! "did:key:zOwner" 2000)]
     (is (= rid1 rid2) "same did+ts -> same RID")
-    (is (not= rid1 rid3) "different did -> different RID")))
+    (is (not= rid1 rid3) "different did -> different RID")
+    (is (not= rid1 rid4) "same did, different ts -> different RID (two repos genesis'd at different times)")))
+
+(deftest read-identity-on-an-absent-rid-is-nil
+  (let [{:keys [get-fn]} (new-store)]
+    (is (nil? (identity/read-identity get-fn "bafyreidoesnotexist")))
+    (is (nil? (identity/owner-did get-fn "bafyreidoesnotexist")))))

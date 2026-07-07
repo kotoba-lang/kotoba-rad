@@ -55,3 +55,18 @@
         sr (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1003)]
     (is (true? (push-gate/authorize-push? get-fn head1 owner-did rid "refs/heads/main" "commit-1" sr)))
     (is (false? (push-gate/authorize-push? get-fn head2 owner-did rid "refs/heads/main" "commit-1" sr)))))
+
+(deftest mismatched-ref-name-is-rejected
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        sr (sigref/sign owner-seed rid "refs/heads/main" "commit-1" 1001)]
+    (is (false? (push-gate/authorize-push? get-fn nil owner-did rid "refs/heads/other" "commit-1" sr)))))
+
+(deftest mismatched-rid-is-rejected
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        other-rid (identity/genesis! put! owner-did 2000)
+        sr (sigref/sign owner-seed rid "refs/heads/main" "commit-1" 1001)]
+    (is (false? (push-gate/authorize-push? get-fn nil owner-did other-rid "refs/heads/main" "commit-1" sr)))))

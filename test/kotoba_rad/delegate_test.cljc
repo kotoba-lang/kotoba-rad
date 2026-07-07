@@ -65,3 +65,49 @@
         a-did (did-of delegate-a-seed)
         head (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)]
     (is (true? (delegate/verify-journal get-fn head)))))
+
+(deftest re-adding-the-same-delegate-twice-is-idempotent
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head1 (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)
+        head2 (delegate/add-delegate! put! get-fn head1 owner-did owner-seed a-did 1001)]
+    (is (= #{owner-did a-did} (delegate/delegates get-fn head2 owner-did)))
+    (is (true? (delegate/verify-journal get-fn head2)))))
+
+(deftest removing-a-delegate-that-was-never-added-is-harmless
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head (delegate/remove-delegate! put! get-fn nil owner-did owner-seed a-did 1000)]
+    (is (= #{owner-did} (delegate/delegates get-fn head owner-did)))
+    (is (not (delegate/authorized? get-fn head owner-did a-did)))))
+
+(deftest owner-can-re-add-a-delegate-after-removing-them
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head1 (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)
+        head2 (delegate/remove-delegate! put! get-fn head1 owner-did owner-seed a-did 1001)
+        head3 (delegate/add-delegate! put! get-fn head2 owner-did owner-seed a-did 1002)]
+    (is (delegate/authorized? get-fn head3 owner-did a-did))))
+
+(deftest an-outsider-cannot-self-add-as-a-delegate
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        outsider-did (did-of outsider-seed)]
+    (is (thrown? #?(:clj Exception :cljs js/Error)
+                 (delegate/add-delegate! put! get-fn nil owner-did outsider-seed outsider-did 1000)))
+    (is (not (delegate/authorized? get-fn nil owner-did outsider-did)))))
+
+(deftest a-removed-delegate-cannot-remove-others
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        b-did (did-of delegate-b-seed)
+        head1 (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)
+        head2 (delegate/add-delegate! put! get-fn head1 owner-did owner-seed b-did 1001)
+        head3 (delegate/remove-delegate! put! get-fn head2 owner-did owner-seed a-did 1002)]
+    (is (thrown? #?(:clj Exception :cljs js/Error)
+                 (delegate/remove-delegate! put! get-fn head3 owner-did delegate-a-seed b-did 1003)))
+    (is (delegate/authorized? get-fn head3 owner-did b-did))))

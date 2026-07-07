@@ -28,3 +28,29 @@
     ;; corrupt the stored bytes for an earlier link in the chain
     (swap! store assoc head1 (byte-array [1 2 3 4]))
     (is (false? (journal/verify get-fn head2)))))
+
+(deftest tampering-the-head-block-itself-also-breaks-verification
+  (let [{:keys [store put! get-fn]} (new-store)
+        head1 (journal/append! put! get-fn nil {"kind" "a"})
+        head2 (journal/append! put! get-fn head1 {"kind" "b"})]
+    (swap! store assoc head2 (byte-array [1 2 3 4]))
+    (is (false? (journal/verify get-fn head2)))))
+
+(deftest single-entry-journal-round-trips-with-seq-zero
+  (let [{:keys [put! get-fn]} (new-store)
+        head (journal/append! put! get-fn nil {"kind" "genesis" "payload" "x"})
+        entries (journal/entries get-fn head)]
+    (is (= 1 (count entries)))
+    (is (= "genesis" (get (first entries) "kind")))
+    (is (= head (:cid (first entries))))
+    (is (true? (journal/verify get-fn head)))))
+
+(deftest three-entry-journal-preserves-append-order-and-seq
+  (let [{:keys [put! get-fn]} (new-store)
+        head1 (journal/append! put! get-fn nil {"kind" "a"})
+        head2 (journal/append! put! get-fn head1 {"kind" "b"})
+        head3 (journal/append! put! get-fn head2 {"kind" "c"})
+        entries (journal/entries get-fn head3)]
+    (is (= ["a" "b" "c"] (mapv #(get % "kind") entries)))
+    (is (= [0 1 2] (mapv :seq entries)))
+    (is (true? (journal/verify get-fn head3)))))
