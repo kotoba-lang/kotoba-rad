@@ -38,6 +38,22 @@ kotobase-peer`, superproject `90-docs/adr/`). `kotoba-git` is the sibling
   needed — only this adapter. Neither repo depends on the other; they
   compose through p2p's documented plain-map message shape, the same way
   `kotoba-git`/`kotoba-rad` compose with each other.
+- **`kotoba-rad.cacao-delegate`** + **`kotoba-rad.push-gate/authorize-
+  push-cacao?`** — a second, journal-free authorization scheme: the owner
+  mints a `cacao.core` capability (root-first/leaf-last delegation chain,
+  CAIP-122/SIWE) granting a push-resource string to a delegate's did:key
+  (`push-resource`/`push-resource-wildcard`); the delegate can present
+  that chain — or mint a further sub-delegated link on top of it — to
+  prove authorization without the verifier ever fetching or replaying
+  `kotoba-rad.journal`. Sub-delegation cannot escalate resources
+  (`cacao.core/verify-chain`'s own `covers?` constraint enforces this).
+  This is a different trust model from `kotoba-rad.delegate`, not a
+  replacement — the journal is a shared, queryable ledger of who's
+  *currently* authorized (supports revocation); a CACAO chain is a bearer
+  capability the holder carries themselves (no revocation without an
+  expiry or a separate revocation list, but no journal lookup needed
+  either). Use whichever trust model fits: `authorize-push?` for the
+  journal, `authorize-push-cacao?` for a portable chain.
 
 `kotoba-rad` only ever deals in plain CID strings for refs/commits (never a
 `kotoba-git` object directly), so the two repos stay decoupled — either can
@@ -55,12 +71,13 @@ system's ref updates, not just `kotoba-git`'s.
   here or there. (Earlier drafts of this README claimed p2p's `deps.edn`
   pointed at a stale `commit-dag` coordinate needing a patch first — that
   was already fixed upstream, independently, before this was checked.)
-- **No CACAO/SIWE delegation chains.** Delegate authorization here is
-  direct Ed25519 did:key signing, not a `cacao.core/verify-chain`-style
-  root-first/leaf-last delegation chain. That's a reasonable future
-  enhancement (CACAO's delegation-chain shape maps naturally onto
-  "authorize a sub-delegate"), deliberately deferred to keep this repo's
-  crypto surface small and directly testable.
+- **No CACAO revocation.** `kotoba-rad.cacao-delegate` covers minting and
+  verifying delegation chains (including sub-delegation and resource-
+  escalation prevention), but a chain is only invalidated by its own
+  `exp` — there's no equivalent of `kotoba-rad.delegate/remove-delegate!`
+  for a CACAO-authorized holder (a real revocation list, or short-lived
+  chains re-minted on a schedule, would be the usual fix; neither is
+  built here).
 - **No protected-branch policy beyond fast-forward.** `authorize-push?`
   checks *who* signed, not policy about *what* ref updates are allowed
   once someone's authorized to make them — that's `kotoba-git.ref-policy`
@@ -104,12 +121,22 @@ system's ref updates, not just `kotoba-git`'s.
 ;;                {:sign-announce (announce/sign-announce-fn owner-seed rid)
 ;;                 :verify-announce? (announce/verify-announce-fn get-fn journal-head
 ;;                                                                 owner-did rid)})
+
+;; journal-free authorization via a CACAO delegation chain instead:
+(require '[kotoba-rad.cacao-delegate :as cacao-delegate]
+         '[cacao.core :as cacao])
+(def grant (:cacao-b64 (cacao/mint {:seed owner-seed :aud collab-did :nonce "n1"
+                                     :iat "2026-01-01T00:00:00Z" :exp "2099-01-01T00:00:00Z"
+                                     :resources [(cacao-delegate/push-resource-wildcard rid)]})))
+(def sr2 (sigref/sign collab-seed rid "refs/heads/main" "commit-cid-here" 2))
+(push-gate/authorize-push-cacao? [grant] owner-did rid "refs/heads/main"
+                                  "commit-cid-here" sr2) ;=> true, no journal consulted
 ```
 
 ## Note on ClojureScript
 
 `ed25519.core` and (transitively) parts of this repo's crypto-touching
-namespaces (`delegate`, `sigref`, `push-gate`, `announce`) are Clojure/JVM-only today —
+namespaces (`delegate`, `sigref`, `push-gate`, `announce`, `cacao-delegate`) are Clojure/JVM-only today —
 the upstream `org-ietf-ed25519` repo has no `:cljs` branch. `.cljc` file
 extensions here match sibling convention, but only `clojure -M:test`
 actually exercises this repo; there is no ClojureScript CI job.

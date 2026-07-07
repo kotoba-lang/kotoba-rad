@@ -1,9 +1,11 @@
 (ns kotoba-rad.push-gate-test
   (:require [clojure.test :refer [deftest is]]
             [ed25519.core :as ed]
+            [cacao.core :as cacao]
             [kotoba-rad.identity :as identity]
             [kotoba-rad.delegate :as delegate]
             [kotoba-rad.sigref :as sigref]
+            [kotoba-rad.cacao-delegate :as cacao-delegate]
             [kotoba-rad.push-gate :as push-gate]))
 
 (defn- new-store []
@@ -70,3 +72,36 @@
         other-rid (identity/genesis! put! owner-did 2000)
         sr (sigref/sign owner-seed rid "refs/heads/main" "commit-1" 1001)]
     (is (false? (push-gate/authorize-push? get-fn nil owner-did other-rid "refs/heads/main" "commit-1" sr)))))
+
+;; ── authorize-push-cacao? (journal-free, self-contained delegation chain) ──
+
+(def rid "rid-1")
+
+(deftest cacao-chain-authorizes-a-push-without-any-journal
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        delegate-did (ed/did-key-from-seed delegate-seed)
+        chain [(:cacao-b64 (cacao/mint {:seed owner-seed :aud delegate-did :nonce "n1"
+                                        :iat "2026-01-01T00:00:00Z" :exp "2099-01-01T00:00:00Z"
+                                        :resources [(cacao-delegate/push-resource-wildcard rid)]}))]
+        sr (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1001)]
+    (is (true? (push-gate/authorize-push-cacao? chain owner-did rid "refs/heads/main" "commit-1" sr)))))
+
+(deftest cacao-chain-rejects-an-outsiders-signature-even-with-a-valid-chain-shape
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        delegate-did (ed/did-key-from-seed delegate-seed)
+        outsider-did (ed/did-key-from-seed outsider-seed)
+        chain [(:cacao-b64 (cacao/mint {:seed owner-seed :aud delegate-did :nonce "n1"
+                                        :iat "2026-01-01T00:00:00Z" :exp "2099-01-01T00:00:00Z"
+                                        :resources [(cacao-delegate/push-resource-wildcard rid)]}))]
+        ;; the outsider signs a sigref but was never granted a link in the chain
+        sr (sigref/sign outsider-seed rid "refs/heads/main" "commit-1" 1001)]
+    (is (false? (push-gate/authorize-push-cacao? chain owner-did rid "refs/heads/main" "commit-1" sr)))))
+
+(deftest cacao-chain-mismatched-commit-is-rejected
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        delegate-did (ed/did-key-from-seed delegate-seed)
+        chain [(:cacao-b64 (cacao/mint {:seed owner-seed :aud delegate-did :nonce "n1"
+                                        :iat "2026-01-01T00:00:00Z" :exp "2099-01-01T00:00:00Z"
+                                        :resources [(cacao-delegate/push-resource-wildcard rid)]}))]
+        sr (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1001)]
+    (is (false? (push-gate/authorize-push-cacao? chain owner-did rid "refs/heads/main" "commit-DIFFERENT" sr)))))
