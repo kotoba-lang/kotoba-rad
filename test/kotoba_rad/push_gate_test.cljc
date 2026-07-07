@@ -1,5 +1,5 @@
 (ns kotoba-rad.push-gate-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [ed25519.core :as ed]
             [cacao.core :as cacao]
             [kotoba-rad.identity :as identity]
@@ -105,3 +105,22 @@
                                         :resources [(cacao-delegate/push-resource-wildcard rid)]}))]
         sr (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1001)]
     (is (false? (push-gate/authorize-push-cacao? chain owner-did rid "refs/heads/main" "commit-DIFFERENT" sr)))))
+
+(deftest cacao-chain-expiry-is-enforced-only-when-the-7-arg-now-opt-is-passed
+  (testing "authorize-push-cacao?'s cacao-opts arg threads :now through to
+            cacao-delegate/authorized-by-chain? -- this is the arity gap
+            that was untested until now (cacao-delegate's own expiry test
+            never went through push-gate at all)"
+    (let [owner-did (ed/did-key-from-seed owner-seed)
+          delegate-did (ed/did-key-from-seed delegate-seed)
+          expired-chain [(:cacao-b64 (cacao/mint {:seed owner-seed :aud delegate-did :nonce "n1"
+                                                   :iat "2020-01-01T00:00:00Z" :exp "2020-06-01T00:00:00Z"
+                                                   :resources [(cacao-delegate/push-resource-wildcard rid)]}))]
+          sr (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1001)]
+      (is (true? (push-gate/authorize-push-cacao? expired-chain owner-did rid "refs/heads/main" "commit-1" sr))
+          "6-arg arity (no cacao-opts) does not check expiry at all")
+      (is (true? (push-gate/authorize-push-cacao? expired-chain owner-did rid "refs/heads/main" "commit-1" sr nil))
+          "7-arg arity with an explicit nil cacao-opts behaves the same as the 6-arg one")
+      (is (false? (push-gate/authorize-push-cacao? expired-chain owner-did rid "refs/heads/main" "commit-1" sr
+                                                    {:now "2026-01-01T00:00:00Z"}))
+          "7-arg arity with a real :now correctly rejects the expired chain"))))
