@@ -1,0 +1,78 @@
+(ns kotoba-rad.announce-test
+  (:require [clojure.test :refer [deftest is]]
+            [ed25519.core :as ed]
+            [kotoba-rad.identity :as identity]
+            [kotoba-rad.delegate :as delegate]
+            [kotoba-rad.announce :as announce]))
+
+(defn- new-store []
+  (let [store (atom {})]
+    {:put! (fn [cid bytes] (swap! store assoc cid bytes))
+     :get-fn (fn [cid] (get @store cid))}))
+
+(def owner-seed (byte-array (range 32)))
+(def delegate-seed (byte-array (map #(mod (+ % 1) 256) (range 32))))
+(def outsider-seed (byte-array (map #(mod (+ % 3) 256) (range 32))))
+
+(defn- p2p-announce [graph head-cid seq]
+  {:type :head-announce :graph graph :head-cid head-cid :seq seq
+   :origin "peer-a" :from "peer-a"})
+
+(deftest owner-signed-announce-verifies
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        sign (announce/sign-announce-fn owner-seed rid)
+        verify? (announce/verify-announce-fn get-fn nil owner-did rid)
+        signed-msg (sign (p2p-announce "my-graph" "commit-1" 7))]
+    (is (contains? signed-msg :sigref))
+    (is (true? (verify? signed-msg)))))
+
+(deftest delegate-signed-announce-verifies-once-authorized
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        delegate-did (ed/did-key-from-seed delegate-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        journal-head (delegate/add-delegate! put! get-fn nil owner-did owner-seed delegate-did 1001)
+        sign (announce/sign-announce-fn delegate-seed rid)
+        verify? (announce/verify-announce-fn get-fn journal-head owner-did rid)
+        signed-msg (sign (p2p-announce "my-graph" "commit-1" 7))]
+    (is (true? (verify? signed-msg)))))
+
+(deftest outsider-signed-announce-is-rejected
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        sign (announce/sign-announce-fn outsider-seed rid)
+        verify? (announce/verify-announce-fn get-fn nil owner-did rid)
+        signed-msg (sign (p2p-announce "my-graph" "commit-1" 7))]
+    (is (false? (verify? signed-msg)))))
+
+(deftest an-unsigned-announce-is-rejected
+  (let [{:keys [get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid "some-rid"
+        verify? (announce/verify-announce-fn get-fn nil owner-did rid)]
+    (is (false? (verify? (p2p-announce "my-graph" "commit-1" 7))))))
+
+;; sigref's ts IS the announce's seq -- signing seq=7 must not authorize
+;; a message claiming seq=9, even with an otherwise-valid signature.
+(deftest a-replayed-signed-announce-for-a-different-seq-is-rejected
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        sign (announce/sign-announce-fn owner-seed rid)
+        verify? (announce/verify-announce-fn get-fn nil owner-did rid)
+        signed-msg (sign (p2p-announce "my-graph" "commit-1" 7))
+        replayed (assoc signed-msg :seq 9)]
+    (is (false? (verify? replayed)))))
+
+(deftest a-different-graph-cannot-reuse-another-graphs-signature
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (ed/did-key-from-seed owner-seed)
+        rid (identity/genesis! put! owner-did 1000)
+        sign (announce/sign-announce-fn owner-seed rid)
+        verify? (announce/verify-announce-fn get-fn nil owner-did rid)
+        signed-msg (sign (p2p-announce "graph-a" "commit-1" 7))
+        relabeled (assoc signed-msg :graph "graph-b")]
+    (is (false? (verify? relabeled)))))

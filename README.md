@@ -30,6 +30,14 @@ kotobase-peer`, superproject `90-docs/adr/`). `kotoba-git` is the sibling
   `RadRegistry` used to enforce server-side: a proposed ref update is
   authorized only if its sigref's fields match, its signature verifies, and
   its signer is currently an authorized delegate.
+- **`kotoba-rad.announce`** — `sign-announce-fn`/`verify-announce-fn`,
+  adapters plugging straight into `kotoba-lang/p2p`'s pluggable
+  `:sign-announce`/`:verify-announce?` `new-node` hooks. A p2p head-announce
+  (`{:graph :head-cid :seq ...}`) is exactly a sigref shape (ref-name =
+  graph, commit = head-cid, ts = seq), so no new signing primitive was
+  needed — only this adapter. Neither repo depends on the other; they
+  compose through p2p's documented plain-map message shape, the same way
+  `kotoba-git`/`kotoba-rad` compose with each other.
 
 `kotoba-rad` only ever deals in plain CID strings for refs/commits (never a
 `kotoba-git` object directly), so the two repos stay decoupled — either can
@@ -38,13 +46,15 @@ system's ref updates, not just `kotoba-git`'s.
 
 ## What this deliberately is NOT (yet)
 
-- **No replication/gossip.** `kotoba-lang/p2p` is the closest existing
-  building block (gossip fanout + bitswap-style delta-sync +
-  `chain/verify-chain`), but its `deps.edn` currently points at a
-  renamed-away `commit-dag` coordinate and its `:head-announce` message has
-  no signature field. Wiring `authorize-push?`/`kotoba-rad.sigref` into a
-  signed head-announce is the natural next step, once `p2p` itself is
-  patched — not attempted here.
+- **No real transport wiring for replication.** `kotoba-rad.announce` +
+  `kotoba-lang/p2p`'s `:sign-announce`/`:verify-announce?` hooks now cover
+  signed/verified head announces (gossip fanout + bitswap-style delta-sync
+  + `chain/verify-chain` were already p2p's job) — but p2p itself still
+  only ships an in-memory loopback reference transport; a real QUIC/
+  WebRTC/WebTransport adapter is still a host follow-up, not attempted
+  here or there. (Earlier drafts of this README claimed p2p's `deps.edn`
+  pointed at a stale `commit-dag` coordinate needing a patch first — that
+  was already fixed upstream, independently, before this was checked.)
 - **No CACAO/SIWE delegation chains.** Delegate authorization here is
   direct Ed25519 did:key signing, not a `cacao.core/verify-chain`-style
   root-first/leaf-last delegation chain. That's a reasonable future
@@ -86,12 +96,20 @@ system's ref updates, not just `kotoba-git`'s.
                       (System/currentTimeMillis)))
 (push-gate/authorize-push? get-fn journal-head owner-did rid "refs/heads/main"
                             "commit-cid-here" sr) ;=> true
+
+;; wiring signed head-announces into a kotoba-lang/p2p node:
+;; (require '[kotoba-rad.announce :as announce]
+;;          '[kotoba.p2p.sync :as sync])
+;; (sync/new-node "my-peer" store
+;;                {:sign-announce (announce/sign-announce-fn owner-seed rid)
+;;                 :verify-announce? (announce/verify-announce-fn get-fn journal-head
+;;                                                                 owner-did rid)})
 ```
 
 ## Note on ClojureScript
 
 `ed25519.core` and (transitively) parts of this repo's crypto-touching
-namespaces (`delegate`, `sigref`, `push-gate`) are Clojure/JVM-only today —
+namespaces (`delegate`, `sigref`, `push-gate`, `announce`) are Clojure/JVM-only today —
 the upstream `org-ietf-ed25519` repo has no `:cljs` branch. `.cljc` file
 extensions here match sibling convention, but only `clojure -M:test`
 actually exercises this repo; there is no ClojureScript CI job.
