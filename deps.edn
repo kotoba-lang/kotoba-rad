@@ -1,0 +1,18 @@
+{:paths ["src"]
+ :deps {io.github.kotoba-lang/io-multiformats      {:git/sha "eec3ee85c458ea830be94518b9a42f4a8f1aee40"}
+        io.github.kotoba-lang/org-ietf-cbor        {:git/sha "9c60d5832b771f869b237f5ba20f0b6de57cde84"}
+        io.github.kotoba-lang/io-ipld              {:git/sha "602154ec19fffd6ee961b5267a64dfb1ae279279"}
+        io.github.kotoba-lang/chain                {:git/sha "60eafc3346d600b5f3d3ffd24022864841ab44ae"}
+        io.github.kotoba-lang/org-ietf-ed25519     {:git/sha "fdcefb9f1b83461fee54d04b63e374fa301ee847"}}
+ :aliases
+ {;; same-monorepo dev: clojure -M:local:test (mirrors org-chainagnostic-cacao's pattern)
+  :local {:override-deps {io.github.kotoba-lang/io-multiformats  {:local/root "../io-multiformats"}
+                           io.github.kotoba-lang/org-ietf-cbor   {:local/root "../org-ietf-cbor"}
+                           io.github.kotoba-lang/io-ipld         {:local/root "../io-ipld"}
+                           io.github.kotoba-lang/chain           {:local/root "../chain"}
+                           io.github.kotoba-lang/org-ietf-ed25519 {:local/root "../org-ietf-ed25519"}}}
+  :test {:extra-paths ["test"]
+         :extra-deps {io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}}}

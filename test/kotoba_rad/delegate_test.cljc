@@ -1,0 +1,67 @@
+(ns kotoba-rad.delegate-test
+  (:require [clojure.test :refer [deftest is]]
+            [ed25519.core :as ed]
+            [kotoba-rad.delegate :as delegate]))
+
+(defn- new-store []
+  (let [store (atom {})]
+    {:put! (fn [cid bytes] (swap! store assoc cid bytes))
+     :get-fn (fn [cid] (get @store cid))}))
+
+;; Fixed 32-byte seeds -- deterministic, reproducible test key material.
+;; Real callers must supply securely-generated random seeds; neither
+;; ed25519.core nor this repo provides an RNG.
+(def owner-seed (byte-array (range 32)))
+(def delegate-a-seed (byte-array (map #(mod (+ % 1) 256) (range 32))))
+(def delegate-b-seed (byte-array (map #(mod (+ % 2) 256) (range 32))))
+(def outsider-seed (byte-array (map #(mod (+ % 3) 256) (range 32))))
+
+(defn- did-of [ed-seed]
+  (ed/did-key-from-seed ed-seed))
+
+(deftest owner-is-authorized-by-default
+  (let [{:keys [get-fn]} (new-store)
+        owner-did (did-of owner-seed)]
+    (is (delegate/authorized? get-fn nil owner-did owner-did))
+    (is (= #{owner-did} (delegate/delegates get-fn nil owner-did)))))
+
+(deftest owner-can-add-a-delegate
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)]
+    (is (delegate/authorized? get-fn head owner-did a-did))
+    (is (= #{owner-did a-did} (delegate/delegates get-fn head owner-did)))))
+
+(deftest an-authorized-delegate-can-add-another-delegate
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        b-did (did-of delegate-b-seed)
+        head1 (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)
+        head2 (delegate/add-delegate! put! get-fn head1 owner-did delegate-a-seed b-did 1001)]
+    (is (= #{owner-did a-did b-did} (delegate/delegates get-fn head2 owner-did)))))
+
+(deftest an-unauthorized-signer-cannot-add-a-delegate
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        outsider-did (did-of outsider-seed)
+        a-did (did-of delegate-a-seed)]
+    (is (thrown? #?(:clj Exception :cljs js/Error)
+                 (delegate/add-delegate! put! get-fn nil owner-did outsider-seed a-did 1000)))
+    (is (not (delegate/authorized? get-fn nil owner-did outsider-did)))))
+
+(deftest remove-delegate-revokes-authorization
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head1 (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)
+        head2 (delegate/remove-delegate! put! get-fn head1 owner-did owner-seed a-did 1001)]
+    (is (not (delegate/authorized? get-fn head2 owner-did a-did)))))
+
+(deftest verify-journal-checks-hash-chain-and-signatures
+  (let [{:keys [put! get-fn]} (new-store)
+        owner-did (did-of owner-seed)
+        a-did (did-of delegate-a-seed)
+        head (delegate/add-delegate! put! get-fn nil owner-did owner-seed a-did 1000)]
+    (is (true? (delegate/verify-journal get-fn head)))))
