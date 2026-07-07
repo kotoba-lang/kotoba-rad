@@ -51,9 +51,12 @@ system's ref updates, not just `kotoba-git`'s.
   enhancement (CACAO's delegation-chain shape maps naturally onto
   "authorize a sub-delegate"), deliberately deferred to keep this repo's
   crypto surface small and directly testable.
-- **No ref-policy (protected branches, fast-forward-only, etc).**
-  `authorize-push?` checks *who* signed, not policy about *what* ref
-  updates are allowed once someone's authorized to make them.
+- **No protected-branch policy beyond fast-forward.** `authorize-push?`
+  checks *who* signed, not policy about *what* ref updates are allowed
+  once someone's authorized to make them — that's `kotoba-git.ref-policy`
+  (`fast-forward?`/`set-ref-ff-only!`) now, for the fast-forward-only
+  case; nothing here (or there) yet composes identity + ff-only + richer
+  policy (required reviewers, branch naming rules, etc.) into one check.
 
 ## Usage
 
