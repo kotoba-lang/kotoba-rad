@@ -62,15 +62,21 @@ system's ref updates, not just `kotoba-git`'s.
 
 ## What this deliberately is NOT (yet)
 
-- **No real transport wiring for replication.** `kotoba-rad.announce` +
-  `kotoba-lang/p2p`'s `:sign-announce`/`:verify-announce?` hooks now cover
-  signed/verified head announces (gossip fanout + bitswap-style delta-sync
-  + `chain/verify-chain` were already p2p's job) — but p2p itself still
-  only ships an in-memory loopback reference transport; a real QUIC/
-  WebRTC/WebTransport adapter is still a host follow-up, not attempted
-  here or there. (Earlier drafts of this README claimed p2p's `deps.edn`
-  pointed at a stale `commit-dag` coordinate needing a patch first — that
-  was already fixed upstream, independently, before this was checked.)
+- **No real transport for replication.** `kotoba-rad.announce` +
+  `kotoba-lang/p2p`'s `:sign-announce`/`:verify-announce?` hooks give
+  signed/verified head announces, and this is now verified end-to-end for
+  real (not just unit-tested in isolation): a delegate signing a real
+  2-node `chain.core` history via these hooks converges the receiver
+  (bitswap/hydrate actually ran) to the signed head, and the receiver
+  correctly rejects a real, valid, further-ahead but *unsigned* announce
+  from the same peer. Getting there required fixing a genuine classpath
+  conflict — `kotoba-lang/p2p` pinned `chain` at a pre-rename SHA
+  (`commit-dag.core`) that broke the moment a real application also
+  depended on `kotoba-rad` (pinned at a post-rename SHA); p2p now tracks
+  the same SHA this repo does (`kotoba-lang/p2p` PR #2). What's still
+  missing is a real transport: p2p only ships an in-memory loopback
+  reference transport; a real QUIC/WebRTC/WebTransport adapter is a host
+  follow-up, not attempted here or there.
 - **No CACAO revocation.** `kotoba-rad.cacao-delegate` covers minting and
   verifying delegation chains (including sub-delegation and resource-
   escalation prevention), but a chain is only invalidated by its own
@@ -116,13 +122,15 @@ system's ref updates, not just `kotoba-git`'s.
 (push-gate/authorize-push? get-fn journal-head owner-did rid "refs/heads/main"
                             "commit-cid-here" sr) ;=> true
 
-;; wiring signed head-announces into a kotoba-lang/p2p node:
-;; (require '[kotoba-rad.announce :as announce]
-;;          '[kotoba.p2p.sync :as sync])
-;; (sync/new-node "my-peer" store
-;;                {:sign-announce (announce/sign-announce-fn owner-seed rid)
-;;                 :verify-announce? (announce/verify-announce-fn get-fn journal-head
-;;                                                                 owner-did rid)})
+;; wiring signed head-announces into a kotoba-lang/p2p node (verified
+;; end-to-end: a signed announce converges the receiver for real; an
+;; unsigned one is rejected even when it's a real, valid, further-ahead head):
+(require '[kotoba-rad.announce :as announce]
+         '[kotoba.p2p.sync :as sync])
+(sync/new-node "my-peer" store
+               {:sign-announce (announce/sign-announce-fn owner-seed rid)
+                :verify-announce? (announce/verify-announce-fn get-fn journal-head
+                                                                owner-did rid)})
 
 ;; journal-free authorization via a CACAO delegation chain instead:
 (require '[kotoba-rad.cacao-delegate :as cacao-delegate]
