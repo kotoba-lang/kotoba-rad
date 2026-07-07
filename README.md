@@ -78,12 +78,14 @@ system's ref updates, not just `kotoba-git`'s.
   for a CACAO-authorized holder (a real revocation list, or short-lived
   chains re-minted on a schedule, would be the usual fix; neither is
   built here).
-- **No protected-branch policy beyond fast-forward.** `authorize-push?`
-  checks *who* signed, not policy about *what* ref updates are allowed
-  once someone's authorized to make them — that's `kotoba-git.ref-policy`
-  (`fast-forward?`/`set-ref-ff-only!`) now, for the fast-forward-only
-  case; nothing here (or there) yet composes identity + ff-only + richer
-  policy (required reviewers, branch naming rules, etc.) into one check.
+- **No richer protected-branch policy beyond fast-forward.**
+  `authorize-push?`/`authorize-push-cacao?` check *who* signed, not
+  policy about *what* ref updates are allowed once someone's authorized —
+  `kotoba-git.ref-policy/set-ref-guarded!` now composes identity + the
+  fast-forward-only shape check into one call (an injected `authorized?`
+  predicate, no dependency from `kotoba-git` back onto this repo), but
+  nothing yet adds richer policy on top (required reviewers, branch
+  naming rules, etc.).
 
 ## Usage
 
