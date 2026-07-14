@@ -25,6 +25,26 @@ kotobase-peer`, superproject `90-docs/adr/`). `kotoba-git` is the sibling
 - **`kotoba-rad.sigref`** — signed attestations that `ref-name` currently
   points at `commit-cid` for a given `rid` (Radicle's `rad/sigrefs`
   equivalent), signed/verified with real Ed25519 over canonical CBOR.
+- **`kotoba-rad.recipient-grant`** (R2, ADR-2606280300 'Private object
+  store') — grant a repo's symmetric epoch key to a recipient's **X25519**
+  public key (a key-agreement key, distinct from their Ed25519 signing
+  did:key) via an ephemeral-static sealed box (ECDH → HKDF → AES-256-GCM).
+  `rotate` mints a new epoch key and re-grants it to the *current* recipient
+  set only — so **revocation is epoch rotation, not deletion of already
+  distributed ciphertext** (that ADR's Security model exactly): a dropped
+  recipient keeps the old-epoch ciphertext they already hold but gets no new
+  grant. X25519 + AES-256-GCM are synchronous on both hosts (JCA on the JVM,
+  node:crypto on nbb), cross-verified: a grant sealed on one host opens on
+  the other.
+- **`kotoba-rad.private-object`** (R2) — the object envelope: AES-256-GCM a
+  git object's bytes under the epoch key, so the **replicated blob is
+  ciphertext** (replication id = ciphertext CID) while the plaintext CID is
+  kept as authority-scoped verification metadata (`open` checks the recovered
+  bytes hash back to it). A peer without an epoch-key grant can replicate the
+  ciphertext but never read it. This is R2's classical confidentiality; the
+  R4 PQ target (hybrid X25519+ML-KEM) layers over the same grant shape.
+- **`kotoba-rad.bytes`** — portable byte/hex/AES helpers (JVM byte-array /
+  nbb Uint8Array), the R2 crypto's host seam.
 - **`kotoba-rad.push-gate`** — `authorize-push?`, a pure predicate
   reimplementing what the deleted Rust `kotoba-git`'s `push_gate`/
   `RadRegistry` used to enforce server-side: a proposed ref update is
