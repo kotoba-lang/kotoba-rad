@@ -124,3 +124,87 @@
       (is (false? (push-gate/authorize-push-cacao? expired-chain owner-did rid "refs/heads/main" "commit-1" sr
                                                     {:now "2026-01-01T00:00:00Z"}))
           "7-arg arity with a real :now correctly rejects the expired chain"))))
+
+;; ---------- authorize-push-multi-cacao? (quorum / separation of duties) ----------
+
+(def second-delegate-seed (byte-array (map #(mod (+ % 5) 256) (range 32))))
+
+(defn- wildcard-chain [aud-did]
+  [(:cacao-b64 (cacao/mint {:seed owner-seed :aud aud-did :nonce "n1"
+                            :iat "2026-01-01T00:00:00Z" :exp "2099-01-01T00:00:00Z"
+                            :resources [(cacao-delegate/push-resource-wildcard rid)]}))])
+
+(defn- approval [seed]
+  {:sigref (sigref/sign seed rid "refs/heads/main" "commit-1" 1001)
+   :chain (wildcard-chain (ed/did-key-from-seed seed))})
+
+(deftest multi-two-distinct-authorized-signers-satisfy-a-2-quorum
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        approvals [(approval delegate-seed) (approval second-delegate-seed)]]
+    (is (true? (push-gate/authorize-push-multi-cacao?
+                approvals 2 owner-did rid "refs/heads/main" "commit-1")))
+    (is (= #{(ed/did-key-from-seed delegate-seed)
+             (ed/did-key-from-seed second-delegate-seed)}
+           (push-gate/authorized-signers-cacao
+            approvals owner-did rid "refs/heads/main" "commit-1")))))
+
+(deftest multi-the-same-signer-twice-counts-once
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        approvals [(approval delegate-seed) (approval delegate-seed)]]
+    (is (false? (push-gate/authorize-push-multi-cacao?
+                 approvals 2 owner-did rid "refs/heads/main" "commit-1")))
+    (is (true? (push-gate/authorize-push-multi-cacao?
+                approvals 1 owner-did rid "refs/heads/main" "commit-1")))))
+
+(deftest multi-excluded-did-never-counts-toward-the-quorum
+  (testing "separation of duties: the proposer's own approval is inert"
+    (let [owner-did (ed/did-key-from-seed owner-seed)
+          proposer-did (ed/did-key-from-seed delegate-seed)
+          approvals [(approval delegate-seed) (approval second-delegate-seed)]]
+      (is (false? (push-gate/authorize-push-multi-cacao?
+                   approvals 2 owner-did rid "refs/heads/main" "commit-1"
+                   {:exclude-dids #{proposer-did}})))
+      (is (true? (push-gate/authorize-push-multi-cacao?
+                  approvals 1 owner-did rid "refs/heads/main" "commit-1"
+                  {:exclude-dids #{proposer-did}}))))))
+
+(deftest multi-an-unauthorized-approval-does-not-count
+  (testing "an outsider's approval (valid sigref, but no chain from the owner) is ignored"
+    (let [owner-did (ed/did-key-from-seed owner-seed)
+          bogus {:sigref (sigref/sign outsider-seed rid "refs/heads/main" "commit-1" 1001)
+                 :chain [(:cacao-b64 (cacao/mint {:seed outsider-seed
+                                                  :aud (ed/did-key-from-seed outsider-seed)
+                                                  :nonce "n1"
+                                                  :iat "2026-01-01T00:00:00Z"
+                                                  :exp "2099-01-01T00:00:00Z"
+                                                  :resources [(cacao-delegate/push-resource-wildcard rid)]}))]}
+          approvals [(approval delegate-seed) bogus]]
+      (is (false? (push-gate/authorize-push-multi-cacao?
+                   approvals 2 owner-did rid "refs/heads/main" "commit-1"))))))
+
+(deftest multi-a-sigref-for-a-different-commit-does-not-count
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        stale {:sigref (sigref/sign second-delegate-seed rid "refs/heads/main" "commit-OLD" 1001)
+               :chain (wildcard-chain (ed/did-key-from-seed second-delegate-seed))}
+        approvals [(approval delegate-seed) stale]]
+    (is (false? (push-gate/authorize-push-multi-cacao?
+                 approvals 2 owner-did rid "refs/heads/main" "commit-1")))))
+
+(deftest multi-zero-quorum-is-the-auto-merge-tier
+  (let [owner-did (ed/did-key-from-seed owner-seed)]
+    (is (true? (push-gate/authorize-push-multi-cacao?
+                [] 0 owner-did rid "refs/heads/main" "commit-1")))))
+
+(deftest multi-expired-chains-are-rejected-when-now-is-enforced
+  (let [owner-did (ed/did-key-from-seed owner-seed)
+        delegate-did (ed/did-key-from-seed delegate-seed)
+        expired {:sigref (sigref/sign delegate-seed rid "refs/heads/main" "commit-1" 1001)
+                 :chain [(:cacao-b64 (cacao/mint {:seed owner-seed :aud delegate-did :nonce "n1"
+                                                  :iat "2020-01-01T00:00:00Z"
+                                                  :exp "2020-06-01T00:00:00Z"
+                                                  :resources [(cacao-delegate/push-resource-wildcard rid)]}))]}]
+    (is (true? (push-gate/authorize-push-multi-cacao?
+                [expired] 1 owner-did rid "refs/heads/main" "commit-1")))
+    (is (false? (push-gate/authorize-push-multi-cacao?
+                 [expired] 1 owner-did rid "refs/heads/main" "commit-1"
+                 {:cacao-opts {:now "2026-01-01T00:00:00Z"}})))))
