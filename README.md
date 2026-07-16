@@ -1,4 +1,6 @@
-# kotoba-rad
+# nekko
+
+*(旧 kotoba-rad — 2026-07-16 rename。根っこ＝sovereign identity/RID の根。namespaces は互換のため kotoba-rad.* を維持)*
 
 Sovereign repo identity, delegate authorization, and signed refs — the
 "Radicle-equivalent" half of ADR-2607072200 (`kotoba-git-kotoba-rad-on-
