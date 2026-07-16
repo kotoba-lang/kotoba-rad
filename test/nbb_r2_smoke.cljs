@@ -5,9 +5,9 @@
 ;; private-object seal/open on the Node runtime. JVM⇄nbb equivalence was
 ;; verified cross-process when this landed (X25519 shared secrets + AES-256-GCM
 ;; are standardized, so a grant/object sealed on one host opens on the other).
-(require '[kotoba-rad.bytes :as b]
-         '[kotoba-rad.recipient-grant :as rg]
-         '[kotoba-rad.private-object :as po])
+(require '[nekko.bytes :as b]
+         '[nekko.recipient-grant :as rg]
+         '[nekko.private-object :as po])
 
 (def alice (rg/gen-recipient-keypair))
 (def bob (rg/gen-recipient-keypair))

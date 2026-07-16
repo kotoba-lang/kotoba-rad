@@ -1,7 +1,7 @@
-(ns kotoba-rad.sigref-test
+(ns nekko.sigref-test
   (:require [clojure.test :refer [deftest is]]
             [ed25519.core :as ed]
-            [kotoba-rad.sigref :as sigref]))
+            [nekko.sigref :as sigref]))
 
 (def signer-seed (byte-array (range 32)))
 (def other-seed (byte-array (map #(mod (+ % 5) 256) (range 32))))

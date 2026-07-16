@@ -1,9 +1,9 @@
-(ns kotoba-rad.announce-test
+(ns nekko.announce-test
   (:require [clojure.test :refer [deftest is]]
             [ed25519.core :as ed]
-            [kotoba-rad.identity :as identity]
-            [kotoba-rad.delegate :as delegate]
-            [kotoba-rad.announce :as announce]))
+            [nekko.identity :as identity]
+            [nekko.delegate :as delegate]
+            [nekko.announce :as announce]))
 
 (defn- new-store []
   (let [store (atom {})]

@@ -1,4 +1,4 @@
-(ns kotoba-rad.bytes
+(ns nekko.bytes
   "Portable byte helpers for kotoba-rad R2 (object encryption). :clj works in
    byte-arrays, :cljs (nbb / --target node) in js/Uint8Array — the same
    platform-native byte convention ed25519.core and cbor.core use. Hex is the

@@ -1,5 +1,5 @@
-(ns kotoba-rad.cacao-delegate
-  "An alternative to kotoba-rad.delegate's append-only journal: authorization
+(ns nekko.cacao-delegate
+  "An alternative to nekko.delegate's append-only journal: authorization
    via a self-contained, portable CACAO delegation chain (root-first,
    leaf-last, cacao.core/verify-chain) rather than consulting a shared
    journal. The owner mints a CACAO granting a capability resource
@@ -7,14 +7,14 @@
    CACAO's `aud`); the delegate can present the chain -- or mint a further
    sub-delegated link on top of it, re-issued from their own did -- to
    prove authorization without the verifier ever fetching/replaying a
-   journal. This is a different trust model from kotoba-rad.delegate, not
+   journal. This is a different trust model from nekko.delegate, not
    a replacement: the journal is a shared, queryable ledger of who's
    currently authorized; a CACAO chain is a bearer capability the holder
    carries themselves.
 
    NOTE: org-chainagnostic-cacao (cacao.core) is JVM-only today (it
    requires ed25519.core and cbor.core, both JVM-only upstream) -- see
-   kotoba-rad.delegate's note."
+   nekko.delegate's note."
   (:require [cacao.core :as cacao]))
 
 (defn push-resource

@@ -1,8 +1,8 @@
-(ns kotoba-rad.cacao-delegate-test
+(ns nekko.cacao-delegate-test
   (:require [clojure.test :refer [deftest is testing]]
             [cacao.core :as cacao]
             [ed25519.core :as ed]
-            [kotoba-rad.cacao-delegate :as cd]))
+            [nekko.cacao-delegate :as cd]))
 
 (def owner-seed (byte-array (range 32)))
 (def delegate-a-seed (byte-array (map #(mod (+ % 1) 256) (range 32))))

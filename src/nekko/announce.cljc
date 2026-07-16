@@ -1,4 +1,4 @@
-(ns kotoba-rad.announce
+(ns nekko.announce
   "Adapters bridging kotoba-rad's signed sigref format to
    kotoba-lang/p2p's pluggable :sign-announce/:verify-announce? hooks
    (kotoba.p2p.sync/new-node) -- this repo does not depend on p2p (nor
@@ -10,8 +10,8 @@
    :seq :origin :from}. Treating :graph as a sigref's ref-name and :seq as
    its ts, a signed announce is exactly a sigref -- no new signing
    primitive is needed, only this adapter."
-  (:require [kotoba-rad.sigref :as sigref]
-            [kotoba-rad.push-gate :as push-gate]))
+  (:require [nekko.sigref :as sigref]
+            [nekko.push-gate :as push-gate]))
 
 (defn sign-announce-fn
   "A p2p :sign-announce hook: signs {:graph :head-cid :seq} as a sigref
@@ -27,7 +27,7 @@
    head-cid, seq) exactly, whose signature verifies, and whose signer is
    currently an authorized delegate (or the owner) per the RID's identity
    journal (journal-get-fn/journal-head-cid/owner-did/rid -- the same
-   arguments kotoba-rad.push-gate/authorize-push? takes)."
+   arguments nekko.push-gate/authorize-push? takes)."
   [journal-get-fn journal-head-cid owner-did rid]
   (fn [{:keys [graph head-cid seq sigref]}]
     (boolean

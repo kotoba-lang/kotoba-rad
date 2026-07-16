@@ -1,6 +1,6 @@
-(ns kotoba-rad.journal-test
+(ns nekko.journal-test
   (:require [clojure.test :refer [deftest is]]
-            [kotoba-rad.journal :as journal]))
+            [nekko.journal :as journal]))
 
 (defn- new-store []
   (let [store (atom {})]

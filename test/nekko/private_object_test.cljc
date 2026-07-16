@@ -1,8 +1,8 @@
-(ns kotoba-rad.private-object-test
+(ns nekko.private-object-test
   (:require [clojure.test :refer [deftest is testing]]
-            [kotoba-rad.bytes :as b]
-            [kotoba-rad.recipient-grant :as rg]
-            [kotoba-rad.private-object :as po]))
+            [nekko.bytes :as b]
+            [nekko.recipient-grant :as rg]
+            [nekko.private-object :as po]))
 
 (deftest seal-open-roundtrip-and-integrity
   (let [key (rg/new-epoch-key)
