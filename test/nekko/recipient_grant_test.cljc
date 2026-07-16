@@ -1,7 +1,7 @@
-(ns kotoba-rad.recipient-grant-test
+(ns nekko.recipient-grant-test
   (:require [clojure.test :refer [deftest is testing]]
-            [kotoba-rad.bytes :as b]
-            [kotoba-rad.recipient-grant :as rg]))
+            [nekko.bytes :as b]
+            [nekko.recipient-grant :as rg]))
 
 (deftest keypair-and-grant-open-roundtrip
   (let [{:keys [priv pub]} (rg/gen-recipient-keypair)

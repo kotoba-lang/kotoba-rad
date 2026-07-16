@@ -1,4 +1,4 @@
-(ns kotoba-rad.recipient-grant
+(ns nekko.recipient-grant
   "kotoba-rad R2 (ADR-2606280300 'Private object store'): grant a repo's
    symmetric epoch key to a recipient's X25519 public key, so a private
    repo's confidentiality is OBJECT ENCRYPTION, not a peer allow-list —
@@ -25,7 +25,7 @@
 
    The classical X25519 here is R2's confidentiality; the R4 PQ target
    (hybrid X25519+ML-KEM) layers a second wrap over the same grant shape."
-  (:require [kotoba-rad.bytes :as b]
+  (:require [nekko.bytes :as b]
             #?(:cljs ["crypto" :as ncrypto]))
   #?(:clj (:import (java.security KeyPairGenerator KeyFactory)
                    (java.security.spec X509EncodedKeySpec PKCS8EncodedKeySpec)

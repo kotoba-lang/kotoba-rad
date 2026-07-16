@@ -1,4 +1,4 @@
-(ns kotoba-rad.journal
+(ns nekko.journal
   "An append-only, hash-chained log of identity events (delegate add/remove,
    sigrefs, ...) for one RID, built directly on kotoba-lang/chain -- chain's
    single-parent, opaque-state design is exactly a linear identity journal,
@@ -22,7 +22,7 @@
 
 (defn verify
   "Hash-chain integrity of the journal (tamper + gapless-seq check). This
-   does NOT check per-entry signatures -- see kotoba-rad.delegate/verify-journal
+   does NOT check per-entry signatures -- see nekko.delegate/verify-journal
    for that."
   [get-fn head-cid]
   (or (nil? head-cid) (chain/verify-chain get-fn head-cid)))

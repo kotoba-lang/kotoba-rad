@@ -1,4 +1,4 @@
-(ns kotoba-rad.private-object
+(ns nekko.private-object
   "kotoba-rad R2: encrypt a git object's bytes under a repo epoch key so the
    REPLICATED blob is ciphertext. Per ADR-2606280300's Security model:
 
@@ -11,7 +11,7 @@
    holder can verify the recovered bytes hash back to the claimed object
    identity (integrity + wrong-key detection beyond the GCM tag). The
    ciphertext's own CID is what a private replica addresses; a peer without
-   an epoch-key grant (kotoba-rad.recipient-grant) can replicate the
+   an epoch-key grant (nekko.recipient-grant) can replicate the
    ciphertext but never read it.
 
    Deliberately NARROW: this seals/opens ONE object's bytes. Composing it
@@ -19,7 +19,7 @@
    reference ciphertext CIDs) is the R2 storage-layer wiring above this;
    this namespace is the crypto envelope only, so it stays testable and
    host-portable (JVM + nbb, same AES-256-GCM as recipient-grant)."
-  (:require [kotoba-rad.bytes :as b]
+  (:require [nekko.bytes :as b]
             #?(:cljs ["crypto" :as ncrypto])))
 
 (defn- cidish

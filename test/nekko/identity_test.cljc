@@ -1,6 +1,6 @@
-(ns kotoba-rad.identity-test
+(ns nekko.identity-test
   (:require [clojure.test :refer [deftest is]]
-            [kotoba-rad.identity :as identity]))
+            [nekko.identity :as identity]))
 
 (defn- new-store []
   (let [store (atom {})]

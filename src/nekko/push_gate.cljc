@@ -1,11 +1,11 @@
-(ns kotoba-rad.push-gate
+(ns nekko.push-gate
   "The sovereign push-authorization check: a reimplementation, as a pure
    predicate, of what the deleted Rust kotoba-git's push_gate/RadRegistry
    used to enforce server-side. Anyone (client or server) can call this
    before adopting a proposed ref update."
-  (:require [kotoba-rad.delegate :as delegate]
-            [kotoba-rad.sigref :as sigref]
-            [kotoba-rad.cacao-delegate :as cacao-delegate]))
+  (:require [nekko.delegate :as delegate]
+            [nekko.sigref :as sigref]
+            [nekko.cacao-delegate :as cacao-delegate]))
 
 (defn- sigref-matches?
   [sigref-map rid ref-name commit-cid]
@@ -29,7 +29,7 @@
 
 (defn authorize-push-cacao?
   "Like authorize-push?, but authorization comes from a self-contained
-   CACAO delegation chain (kotoba-rad.cacao-delegate/authorized-by-chain?,
+   CACAO delegation chain (nekko.cacao-delegate/authorized-by-chain?,
    root-first/leaf-last, rooted at owner-did) instead of consulting a
    journal. The sigref still proves THIS specific ref update was attested
    by the chain's holder; the chain proves that holder was ever allowed to

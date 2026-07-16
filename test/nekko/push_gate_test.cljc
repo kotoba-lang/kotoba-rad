@@ -1,12 +1,12 @@
-(ns kotoba-rad.push-gate-test
+(ns nekko.push-gate-test
   (:require [clojure.test :refer [deftest is testing]]
             [ed25519.core :as ed]
             [cacao.core :as cacao]
-            [kotoba-rad.identity :as identity]
-            [kotoba-rad.delegate :as delegate]
-            [kotoba-rad.sigref :as sigref]
-            [kotoba-rad.cacao-delegate :as cacao-delegate]
-            [kotoba-rad.push-gate :as push-gate]))
+            [nekko.identity :as identity]
+            [nekko.delegate :as delegate]
+            [nekko.sigref :as sigref]
+            [nekko.cacao-delegate :as cacao-delegate]
+            [nekko.push-gate :as push-gate]))
 
 (defn- new-store []
   (let [store (atom {})]

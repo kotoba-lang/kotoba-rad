@@ -1,10 +1,10 @@
-(ns kotoba-rad.sigref
+(ns nekko.sigref
   "Signed refs: a did:key-holding delegate attests \"ref-name currently
    points at commit-cid, for this RID\" -- the Radicle rad/sigrefs
    equivalent. kotoba-rad only ever deals in CID strings here, not
    kotoba-git objects directly, so the two repos stay decoupled.
 
-   NOTE: ed25519.core is JVM-only today -- see kotoba-rad.delegate."
+   NOTE: ed25519.core is JVM-only today -- see nekko.delegate."
   (:require [cbor.core :as cbor]
             [ed25519.core :as ed]))
 

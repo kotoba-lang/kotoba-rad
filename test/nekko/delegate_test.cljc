@@ -1,7 +1,7 @@
-(ns kotoba-rad.delegate-test
+(ns nekko.delegate-test
   (:require [clojure.test :refer [deftest is]]
             [ed25519.core :as ed]
-            [kotoba-rad.delegate :as delegate]))
+            [nekko.delegate :as delegate]))
 
 (defn- new-store []
   (let [store (atom {})]

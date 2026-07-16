@@ -1,4 +1,4 @@
-(ns kotoba-rad.delegate
+(ns nekko.delegate
   "Delegate authorization derived from a signed identity journal. The owner
    (identity genesis' did) is always authorized; delegate-add/delegate-remove
    entries must themselves be signed by an already-authorized did:key, so
@@ -9,7 +9,7 @@
    NOTE: ed25519.core is JVM-only today (no :cljs branch upstream), so this
    namespace, despite the .cljc extension (matching sibling convention), is
    effectively Clojure/JVM-only until that changes."
-  (:require [kotoba-rad.journal :as journal]
+  (:require [nekko.journal :as journal]
             [cbor.core :as cbor]
             [ed25519.core :as ed]))
 

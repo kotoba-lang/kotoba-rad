@@ -1,4 +1,4 @@
-(ns kotoba-rad.identity
+(ns nekko.identity
   "Sovereign repo identity: an RID is the CID of a repo's genesis block,
    anchoring identity to the same content-addressing scheme (io-ipld,
    DAG-CBOR) kotoba-git uses for its objects, rather than a separate
