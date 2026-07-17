@@ -54,6 +54,10 @@ kotobase-peer`, superproject `90-docs/adr/`). `kotoba-git` is the sibling
   expiry or a separate revocation list, but no journal lookup needed
   either). Use whichever trust model fits: `authorize-push?` for the
   journal, `authorize-push-cacao?` for a portable chain.
+- **`kotoba-rad.canonical`** — threshold synthesis over independently valid
+  sigrefs. Duplicate votes by one delegate count once; invalid or unauthorized
+  signatures are ignored; different commits both reaching quorum is an
+  explicit split-quorum error rather than an arrival-order choice.
 
 `kotoba-rad` only ever deals in plain CID strings for refs/commits (never a
 `kotoba-git` object directly), so the two repos stay decoupled — either can
